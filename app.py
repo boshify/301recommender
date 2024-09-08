@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import io
 
 # Title of the app
 st.title('301 Recommender')
@@ -16,6 +17,9 @@ if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     st.write("Preview of the uploaded data:")
     st.dataframe(df.head())
+
+    # Extract original file name for the download file name
+    original_filename = uploaded_file.name.split(".")[0]
 
     # Step 3: Map the URL and Status Code columns
     st.header("Map URL and Status Code Columns")
@@ -56,4 +60,17 @@ if uploaded_file is not None:
             st.header("301 Redirect Recommendations")
             st.dataframe(df_output)
 
-# For future steps: Logic to fill in Recommendation columns
+            # Step 6: Create a downloadable CSV file
+            output_filename = f"{original_filename} - 301 Recommendations.csv"
+            csv_data = df_output.to_csv(index=False)
+
+            # Create an in-memory buffer to hold the CSV
+            buffer = io.StringIO(csv_data)
+
+            # Provide the download button
+            st.download_button(
+                label="Download CSV",
+                data=buffer.getvalue(),
+                file_name=output_filename,
+                mime="text/csv"
+            )
