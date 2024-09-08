@@ -1,9 +1,20 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
+import openai
+from sklearn.metrics.pairwise import cosine_similarity
 import io
 
 # Title of the app
 st.title('301 Recommender')
+
+# OpenAI API key from secrets
+openai.api_key = st.secrets["openai_api_key"]
+
+# Function to get embeddings from OpenAI
+def get_embedding(text):
+    response = openai.Embedding.create(input=[text], model="text-embedding-ada-002")
+    return response['data'][0]['embedding']
 
 # Step 1: Upload CSV file
 st.header("Upload Crawl Data CSV")
@@ -34,33 +45,54 @@ if uploaded_file is not None:
         
         # Filter the dataframe for 4xx and 5xx status codes
         df_errors = df[df[status_code_column].apply(filter_errors)]
-        
+
+        # Filter the dataframe for working URLs (status code 200)
+        df_working = df[df[status_code_column] == 200]
+
         # Check if there are any errors to process
-        if df_errors.empty:
-            st.write("No 4xx or 5xx errors found.")
+        if df_errors.empty or df_working.empty:
+            st.write("No 4xx/5xx errors found or no 200 working URLs found.")
         else:
             # Add progress bar and message
             progress_bar = st.progress(0)
-            st.write(f"Processing {len(df_errors)} rows...")
+            st.write(f"Processing {len(df_errors)} error rows...")
 
-            # Simulate row processing
-            for i in range(1, 101):
-                progress_bar.progress(i)
+            # Step 5: Get embeddings for error URLs and working URLs
+            embeddings_errors = []
+            embeddings_working = []
+            try:
+                # Fetch embeddings for the error URLs
+                for url in df_errors[url_column]:
+                    embeddings_errors.append(get_embedding(url))
+                
+                # Fetch embeddings for the working URLs
+                for url in df_working[url_column]:
+                    embeddings_working.append(get_embedding(url))
+            except Exception as e:
+                st.write(f"Error fetching embeddings: {e}")
+                st.stop()
 
-            # Step 5: Generate output table (empty recommendations for now)
-            st.write("Processing complete!")
-
-            # Create a new DataFrame for the final output with empty recommendation columns
+            # Step 6: Calculate recommendations using cosine similarity
             df_output = df_errors[[url_column, status_code_column]].copy()
             df_output['Recommendation 1'] = ''
             df_output['Recommendation 2'] = ''
             df_output['Recommendation 3'] = ''
 
+            # Calculate cosine similarity and recommend top 3 URLs
+            similarity_matrix = cosine_similarity(embeddings_errors, embeddings_working)
+            for idx, row in df_output.iterrows():
+                top_3_indices = np.argsort(similarity_matrix[idx])[-3:][::-1]
+                top_3_urls = df_working.iloc[top_3_indices][url_column].values
+                df_output.at[idx, 'Recommendation 1'] = top_3_urls[0]
+                df_output.at[idx, 'Recommendation 2'] = top_3_urls[1]
+                df_output.at[idx, 'Recommendation 3'] = top_3_urls[2]
+
             # Display the final output table
+            st.write("Processing complete!")
             st.header("301 Redirect Recommendations")
             st.dataframe(df_output)
 
-            # Step 6: Create a downloadable CSV file
+            # Step 7: Create a downloadable CSV file
             output_filename = f"{original_filename} - 301 Recommendations.csv"
             csv_data = df_output.to_csv(index=False)
 
