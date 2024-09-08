@@ -9,9 +9,9 @@ import io
 st.title('301 Recommender')
 
 # OpenAI API key from secrets
-openai.api_key = st.secrets["api_key"]
+openai.api_key = st.secrets["api_key"]  # Ensure the secret is flat, or use ["openai"]["api_key"] if nested
 
-# Function to get embeddings using OpenAI's new API structure
+# Function to get embeddings from OpenAI
 def get_embedding(text):
     response = openai.embeddings.create(input=[text], model="text-embedding-ada-002")
     # Access the first embedding from the response
@@ -81,7 +81,10 @@ if uploaded_file is not None:
 
             # Calculate cosine similarity and recommend top 3 URLs
             similarity_matrix = cosine_similarity(embeddings_errors, embeddings_working)
-            for idx, row in df_output.iterrows():
+            
+            # Loop through error URLs by index
+            for idx in range(len(df_output)):
+                # Get top 3 most similar working URLs
                 top_3_indices = np.argsort(similarity_matrix[idx])[-3:][::-1]
                 top_3_urls = df_working.iloc[top_3_indices][url_column].values
                 df_output.at[idx, 'Recommendation 1'] = top_3_urls[0]
