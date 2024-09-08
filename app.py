@@ -14,7 +14,8 @@ openai.api_key = st.secrets["api_key"]
 # Function to get embeddings using OpenAI's new API structure
 def get_embedding(text):
     response = openai.embeddings.create(input=[text], model="text-embedding-ada-002")
-    return response['data'][0]['embedding']
+    # Access the first embedding from the response
+    return response.data[0].embedding
 
 # Step 1: Upload CSV file
 st.header("Upload Crawl Data CSV")
