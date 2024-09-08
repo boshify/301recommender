@@ -9,7 +9,7 @@ import io
 st.title('301 Recommender')
 
 # OpenAI API key from secrets
-openai.api_key = st.secrets["api_key"]  # Ensure the secret is flat, or use ["openai"]["api_key"] if nested
+openai.api_key = st.secrets["api_key"]
 
 # Function to get embeddings from OpenAI
 def get_embedding(text):
@@ -79,6 +79,11 @@ if uploaded_file is not None:
 
             # Step 6: Calculate recommendations using cosine similarity
             df_output = df_errors[[url_column, status_code_column]].copy()
+            
+            # Debugging: Print the size of the output DataFrame and working DataFrame
+            st.write(f"Number of error URLs: {len(df_output)}")
+            st.write(f"Number of working URLs: {len(df_working)}")
+            
             df_output['Recommendation 1'] = ''
             df_output['Recommendation 2'] = ''
             df_output['Recommendation 3'] = ''
@@ -91,10 +96,15 @@ if uploaded_file is not None:
             for idx in range(len(df_output)):
                 # Get top 3 most similar working URLs
                 top_3_indices = np.argsort(similarity_matrix[idx])[-3:][::-1]
+                
+                # Debugging: Output the top 3 indices
                 st.write(f"Top 3 indices for URL {df_output.iloc[idx][url_column]}: {top_3_indices}")
                 
                 # Extract the URLs from the working DataFrame
                 top_3_urls = df_working.iloc[top_3_indices][url_column].values
+                
+                # Debugging: Print the actual recommended URLs to ensure correct extraction
+                st.write(f"Top 3 recommended URLs for {df_output.iloc[idx][url_column]}: {top_3_urls}")
                 
                 # Assign the recommended URLs to the output DataFrame
                 if len(top_3_urls) > 0:
