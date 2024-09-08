@@ -93,10 +93,16 @@ if uploaded_file is not None:
                 top_3_indices = np.argsort(similarity_matrix[idx])[-3:][::-1]
                 st.write(f"Top 3 indices for URL {df_output.iloc[idx][url_column]}: {top_3_indices}")
                 
+                # Extract the URLs from the working DataFrame
                 top_3_urls = df_working.iloc[top_3_indices][url_column].values
-                df_output.at[idx, 'Recommendation 1'] = top_3_urls[0] if len(top_3_urls) > 0 else ''
-                df_output.at[idx, 'Recommendation 2'] = top_3_urls[1] if len(top_3_urls) > 1 else ''
-                df_output.at[idx, 'Recommendation 3'] = top_3_urls[2] if len(top_3_urls) > 2 else ''
+                
+                # Assign the recommended URLs to the output DataFrame
+                if len(top_3_urls) > 0:
+                    df_output.at[idx, 'Recommendation 1'] = top_3_urls[0]
+                if len(top_3_urls) > 1:
+                    df_output.at[idx, 'Recommendation 2'] = top_3_urls[1]
+                if len(top_3_urls) > 2:
+                    df_output.at[idx, 'Recommendation 3'] = top_3_urls[2]
 
             # Display the final output table
             st.write("Processing complete!")
