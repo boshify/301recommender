@@ -14,7 +14,6 @@ openai.api_key = st.secrets["api_key"]  # Ensure the secret is flat, or use ["op
 # Function to get embeddings from OpenAI
 def get_embedding(text):
     response = openai.embeddings.create(input=[text], model="text-embedding-ada-002")
-    # Access the first embedding from the response
     return response.data[0].embedding
 
 # Step 1: Upload CSV file
@@ -69,6 +68,11 @@ if uploaded_file is not None:
                 # Fetch embeddings for the working URLs
                 for url in df_working[url_column]:
                     embeddings_working.append(get_embedding(url))
+                
+                # Check if embeddings are successfully generated
+                st.write(f"Generated {len(embeddings_errors)} embeddings for error URLs.")
+                st.write(f"Generated {len(embeddings_working)} embeddings for working URLs.")
+            
             except Exception as e:
                 st.write(f"Error fetching embeddings: {e}")
                 st.stop()
@@ -81,15 +85,18 @@ if uploaded_file is not None:
 
             # Calculate cosine similarity and recommend top 3 URLs
             similarity_matrix = cosine_similarity(embeddings_errors, embeddings_working)
+            st.write(f"Similarity matrix shape: {similarity_matrix.shape}")
             
             # Loop through error URLs by index
             for idx in range(len(df_output)):
                 # Get top 3 most similar working URLs
                 top_3_indices = np.argsort(similarity_matrix[idx])[-3:][::-1]
+                st.write(f"Top 3 indices for URL {df_output.iloc[idx][url_column]}: {top_3_indices}")
+                
                 top_3_urls = df_working.iloc[top_3_indices][url_column].values
-                df_output.at[idx, 'Recommendation 1'] = top_3_urls[0]
-                df_output.at[idx, 'Recommendation 2'] = top_3_urls[1]
-                df_output.at[idx, 'Recommendation 3'] = top_3_urls[2]
+                df_output.at[idx, 'Recommendation 1'] = top_3_urls[0] if len(top_3_urls) > 0 else ''
+                df_output.at[idx, 'Recommendation 2'] = top_3_urls[1] if len(top_3_urls) > 1 else ''
+                df_output.at[idx, 'Recommendation 3'] = top_3_urls[2] if len(top_3_urls) > 2 else ''
 
             # Display the final output table
             st.write("Processing complete!")
