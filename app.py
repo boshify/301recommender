@@ -9,7 +9,7 @@ import io
 st.title('301 Recommender')
 
 # OpenAI API key from secrets
-openai.api_key = st.secrets["openai_api_key"]
+openai.api_key = st.secrets["openai"]["api_key"]
 
 # Function to get embeddings from OpenAI
 def get_embedding(text):
