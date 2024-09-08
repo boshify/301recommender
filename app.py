@@ -24,25 +24,36 @@ if uploaded_file is not None:
 
     # Step 4: Button to trigger recommendation
     if st.button("Recommend 301s"):
-        # Add progress bar and message
-        progress_bar = st.progress(0)
-        st.write("Processing rows...")
-
-        # Simulate row processing for now
-        for i in range(1, 101):
-            progress_bar.progress(i)
+        # Filter rows where the status code is 4xx or 5xx
+        def filter_errors(status_code):
+            return str(status_code).startswith('4') or str(status_code).startswith('5')
         
-        # Step 5: Generate output table (empty recommendations for now)
-        st.write("Processing complete!")
+        # Filter the dataframe for 4xx and 5xx status codes
+        df_errors = df[df[status_code_column].apply(filter_errors)]
+        
+        # Check if there are any errors to process
+        if df_errors.empty:
+            st.write("No 4xx or 5xx errors found.")
+        else:
+            # Add progress bar and message
+            progress_bar = st.progress(0)
+            st.write(f"Processing {len(df_errors)} rows...")
 
-        # Create a new DataFrame for the final output with empty recommendation columns
-        df_output = df[[url_column, status_code_column]].copy()
-        df_output['Recommendation 1'] = ''
-        df_output['Recommendation 2'] = ''
-        df_output['Recommendation 3'] = ''
+            # Simulate row processing
+            for i in range(1, 101):
+                progress_bar.progress(i)
 
-        # Display the final output table
-        st.header("301 Redirect Recommendations")
-        st.dataframe(df_output)
+            # Step 5: Generate output table (empty recommendations for now)
+            st.write("Processing complete!")
+
+            # Create a new DataFrame for the final output with empty recommendation columns
+            df_output = df_errors[[url_column, status_code_column]].copy()
+            df_output['Recommendation 1'] = ''
+            df_output['Recommendation 2'] = ''
+            df_output['Recommendation 3'] = ''
+
+            # Display the final output table
+            st.header("301 Redirect Recommendations")
+            st.dataframe(df_output)
 
 # For future steps: Logic to fill in Recommendation columns
