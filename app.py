@@ -16,7 +16,7 @@ def get_redirect_suggestion(broken_url, working_urls):
               f"Only output the URL slug and no additional text:\n{working_urls}")
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant for recommending redirects."},
                 {"role": "user", "content": prompt}
