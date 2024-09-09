@@ -44,6 +44,7 @@ if uploaded_file is not None:
     url_column = st.selectbox("Select the URL Column", df.columns)
     status_code_column = st.selectbox("Select the Status Code Column", df.columns)
 
+    # Generate 301 recommendations
     if st.button("Generate 301 Recommendations"):
         # Filter 4xx/5xx URLs (error pages)
         df_errors = df[df[status_code_column].astype(str).str.startswith(('4', '5'))]
@@ -70,13 +71,13 @@ if uploaded_file is not None:
                 # Get the first recommendation
                 recommendation_1 = get_redirect_suggestion(broken_url, working_urls_list)
                 
-                # Get the second recommendation by modifying the prompt slightly
                 if recommendation_1:
-                    filtered_working_urls_list = working_urls_list.replace(recommendation_1, "")
-                    recommendation_2 = get_redirect_suggestion(broken_url, filtered_working_urls_list)
+                    # Get the second recommendation by removing the first recommendation from the list
+                    working_urls_list_filtered = "\n".join([url for url in df_working[url_column].tolist() if url != recommendation_1])
+                    recommendation_2 = get_redirect_suggestion(broken_url, working_urls_list_filtered)
                 else:
                     recommendation_2 = None
-                
+
                 # Assign recommendations to the output DataFrame
                 df_output.at[idx, 'Recommendation 1'] = recommendation_1 if recommendation_1 else ''
                 df_output.at[idx, 'Recommendation 2'] = recommendation_2 if recommendation_2 else ''
