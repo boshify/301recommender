@@ -1,13 +1,13 @@
 import streamlit as st
 import pandas as pd
-import openai
+from openai import OpenAI
 import io
+
+# Initialize OpenAI client
+client = OpenAI(api_key=st.secrets["api_key"])
 
 # Title of the app
 st.title('301 Redirect Recommender')
-
-# OpenAI API key from secrets
-openai.api_key = st.secrets["api_key"]
 
 # Function to generate prompt for OpenAI using the updated API
 def get_redirect_suggestion(broken_url, working_urls):
@@ -15,7 +15,7 @@ def get_redirect_suggestion(broken_url, working_urls):
               f"Recommend the best URL to redirect it to using semantic context from this list. "
               f"Only output the URL slug and no additional text:\n{working_urls}")
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant for recommending redirects."},
@@ -24,7 +24,7 @@ def get_redirect_suggestion(broken_url, working_urls):
             max_tokens=100,
             temperature=0.7
         )
-        return response['choices'][0]['message']['content'].strip()
+        return response.choices[0].message.content.strip()
     except Exception as e:
         st.error(f"Error fetching recommendations from OpenAI: {e}")
         return None
