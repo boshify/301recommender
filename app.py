@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import openai
-from sklearn.metrics.pairwise import cosine_similarity
 import io
 
 # Title of the app
@@ -11,10 +9,22 @@ st.title('301 Redirect Recommender')
 # OpenAI API key from secrets
 openai.api_key = st.secrets["api_key"]
 
-# Function to fetch embeddings from OpenAI API
-def get_embedding(text):
-    response = openai.embeddings.create(input=[text], model="text-embedding-ada-002")
-    return response.data[0].embedding
+# Function to generate prompt for OpenAI
+def get_redirect_suggestion(broken_url, working_urls):
+    prompt = (f"This URL slug is broken and does not serve a page: {broken_url}. "
+              f"Recommend the best URL to redirect it to using semantic context from this list. "
+              f"Only output the URL slug and no additional text:\n{working_urls}")
+    try:
+        response = openai.Completion.create(
+            engine="text-davinci-003",
+            prompt=prompt,
+            max_tokens=100,
+            temperature=0.7
+        )
+        return response.choices[0].text.strip()
+    except Exception as e:
+        st.error(f"Error fetching recommendations from OpenAI: {e}")
+        return None
 
 # File uploader
 st.header("Upload Your Crawl Data CSV")
@@ -45,46 +55,31 @@ if uploaded_file is not None:
         else:
             st.write(f"Found {len(df_errors)} error pages and {len(df_working)} working pages.")
             
-            # Initialize empty embeddings
-            embeddings_errors = []
-            embeddings_working = []
+            # Get list of working URLs
+            working_urls_list = "\n".join(df_working[url_column].tolist())
             
-            try:
-                st.write("Fetching embeddings for error URLs...")
-                embeddings_errors = [get_embedding(url) for url in df_errors[url_column]]
-                st.write("Fetching embeddings for working URLs...")
-                embeddings_working = [get_embedding(url) for url in df_working[url_column]]
-            except Exception as e:
-                st.error(f"Error fetching embeddings: {e}")
-                st.stop()
-
             # Create DataFrame for output and initialize recommendation columns
             df_output = df_errors[[url_column, status_code_column]].copy()
             df_output['Recommendation 1'] = ''
             df_output['Recommendation 2'] = ''
-            df_output['Recommendation 3'] = ''
 
-            # Calculate cosine similarity
-            similarity_matrix = cosine_similarity(embeddings_errors, embeddings_working)
-            
-            # Debugging: Show the shape of the similarity matrix
-            st.write(f"Similarity matrix shape: {similarity_matrix.shape}")
-            
-            # Loop through error URLs to get top 3 working URLs
+            # Loop through error URLs to get top 2 redirect recommendations
             for idx, row in df_output.iterrows():
-                # Get top 3 similar working URLs based on cosine similarity
-                top_3_indices = np.argsort(similarity_matrix[idx])[-3:][::-1]
+                broken_url = row[url_column]
                 
-                # Debugging: Output the top 3 indices for each error URL
-                st.write(f"Top 3 indices for {row[url_column]}: {top_3_indices}")
+                # Get the first recommendation
+                recommendation_1 = get_redirect_suggestion(broken_url, working_urls_list)
                 
-                # Get the corresponding URLs from df_working
-                top_3_urls = df_working.iloc[top_3_indices][url_column].values
+                # Get the second recommendation by modifying the prompt slightly
+                if recommendation_1:
+                    filtered_working_urls_list = working_urls_list.replace(recommendation_1, "")
+                    recommendation_2 = get_redirect_suggestion(broken_url, filtered_working_urls_list)
+                else:
+                    recommendation_2 = None
                 
-                # Assign top 3 recommendations to the output DataFrame
-                df_output.at[idx, 'Recommendation 1'] = top_3_urls[0] if len(top_3_urls) > 0 else ''
-                df_output.at[idx, 'Recommendation 2'] = top_3_urls[1] if len(top_3_urls) > 1 else ''
-                df_output.at[idx, 'Recommendation 3'] = top_3_urls[2] if len(top_3_urls) > 2 else ''
+                # Assign recommendations to the output DataFrame
+                df_output.at[idx, 'Recommendation 1'] = recommendation_1 if recommendation_1 else ''
+                df_output.at[idx, 'Recommendation 2'] = recommendation_2 if recommendation_2 else ''
 
             # Display the final output table
             st.write("301 Redirect Recommendations")
